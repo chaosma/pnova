@@ -10,8 +10,10 @@ use nova_snark::{
 };
 use std::time::Instant;
 
-type G1 = pasta_curves::pallas::Point;
-type G2 = pasta_curves::vesta::Point;
+type G1 = halo2curves::bn256::G1;
+type G2 = halo2curves::grumpkin::G1;
+//type G1 = pasta_curves::pallas::Point;
+//type G2 = pasta_curves::vesta::Point;
 
 // (x_i_plus_1, y_i_plus_1) <-- (y_i, x_i + y_i)
 #[derive(Clone, Debug)]
@@ -77,7 +79,7 @@ impl<F: PrimeField> StepCircuit<F> for FiboCircuit<F> {
         })?;
       let dummy = 
         AllocatedNum::alloc(cs.namespace(||format!("one_{i}")), ||{
-            Ok(F::one())
+            Ok(F::ONE)
         })?;
 
       cs.enforce(||format!("y_i_plus_1_{i} * 1 = x_i_{i} + y_i_{i}"), 
@@ -134,6 +136,7 @@ fn main() {
     // (SS1) produce public parameters
     let start = Instant::now();
     println!("Producing public parameters...");
+    // setup will wrap each of C1 and C2 (as F) with F' (includes F and NIFS.V) in order to extract commitment_key
     let pp = PublicParams::<
       G1,
       G2,
@@ -222,7 +225,7 @@ fn main() {
 
     // (SS5) produce a compressed SNARK
     println!("Generating a CompressedSNARK using Spartan with IPA-PC...");
-    let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp);
+    let (pk, vk) = CompressedSNARK::<_, _, _, _, S1, S2>::setup(&pp).unwrap();
 
     let start = Instant::now();
     type EE1 = nova_snark::provider::ipa_pc::EvaluationEngine<G1>;
